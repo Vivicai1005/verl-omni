@@ -41,13 +41,15 @@ Build context is controlled by the repo-root [`.dockerignore`](https://github.co
 
 ## Optional Dependencies
 
-The image installs the core stack only. Add these inside the container as needed:
+The base image already provides `qwen-vl-utils` for vision-language training and
+`pytest`, `pytest-cov`, `pytest-asyncio`, and `pre-commit` for development, and
+the build adds `math-verify` and `latex2sympy2_extended`. Only these need
+installing inside the container:
 
-| Extra               | Install                                                        | When needed                             |
-| ------------------- | -------------------------------------------------------------- | --------------------------------------- |
-| OCR reward          | `pip install Levenshtein`                                       | FlowGRPO training with OCR-based reward |
-| Multimodal training | `pip install qwen-vl-utils math-verify`                         | Vision-language training (e.g. MMK12)   |
-| Dev tools           | `pip install pytest pytest-cov pytest-asyncio pre-commit py-spy` | Linting and unit tests                  |
+| Extra      | Install                     | When needed                             |
+| ---------- | --------------------------- | --------------------------------------- |
+| OCR reward | `pip install Levenshtein`   | FlowGRPO training with OCR-based reward |
+| Profiling  | `pip install py-spy`        | Sampling profiler for stack traces      |
 
 `PIP_CONSTRAINT` is baked into the image, so these cannot pull a CUDA `torch` over the ROCm build.
 
