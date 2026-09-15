@@ -53,27 +53,41 @@ installing inside the container:
 
 `PIP_CONSTRAINT` is baked into the image, so these cannot pull a CUDA `torch` over the ROCm build.
 
+
 ## Run
 
 ```bash
+export REPO=/path/to/verl-omni
+export WORKSPACE=$HOME
+
+mkdir -p \
+  "$WORKSPACE/data" \
+  "$WORKSPACE/checkpoints" \
+  "$HOME/.cache/huggingface"
+
 docker run -it --rm \
-  --network host \
-  --ipc host \
+  --network=host \
+  --ipc=host \
   --device=/dev/kfd \
   --device=/dev/dri \
-  --group-add video \
-  --security-opt seccomp=unconfined \
-  --shm-size=16g \
+  --group-add=video \
+  --cap-add=SYS_PTRACE \
+  --security-opt=seccomp=unconfined \
+  --privileged \
+  --ulimit nofile=1048576:1048576 \
+  --ulimit memlock=-1 \
+  --ulimit stack=67108864 \
+  -v "$REPO:/workspace/verl-omni" \
+  -v "$WORKSPACE/data:$WORKSPACE/data" \
+  -v "$WORKSPACE/checkpoints:$WORKSPACE/checkpoints" \
+  -v "$HOME/.cache/huggingface:/root/.cache/huggingface" \
+  -e WORKSPACE="$WORKSPACE" \
+  -e HF_HOME=/root/.cache/huggingface \
+  -e WANDB_API_KEY="${WANDB_API_KEY:-}" \
   -w /workspace/verl-omni \
   verl-omni:rocm \
   bash
 ```
-
-* **`/dev/kfd`** — the AMD compute driver interface; without it the HIP runtime cannot initialise.
-* **`/dev/dri`** — render nodes for the individual GPUs.
-* **`--group-add video`** — grants the container user access to those device nodes.
-* **`--security-opt seccomp=unconfined`** — required for the userspace memory mapping the HIP allocator performs.
-* **`--ipc host`** and **`--shm-size`** — avoid shared-memory limits during rollout.
 
 ## Post-Installation Verification
 
@@ -156,9 +170,7 @@ NVIDIA GPU images are documented in the {doc}`GPU installation guide <install>`,
 
 ## Example: Qwen-Image FlowGRPO training in Docker
 
-This walkthrough uses the OCR dataset and
-`examples/flowgrpo_trainer/qwen_image/run_qwen_image_ocr_lora.sh`. It needs 8
-GPUs — 4 for actor and rollout, 4 for the reward model.
+This walkthrough uses the OCR dataset and `examples/flowgrpo_trainer/qwen_image/run_qwen_image_ocr_lora.sh`. 
 
 ### 1. Launch the interactive container
 
