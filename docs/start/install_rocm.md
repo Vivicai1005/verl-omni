@@ -126,42 +126,6 @@ mismatched pair. Omni recipes (`main_omni`) are unaffected — they select
 attention via `attn_implementation`, which defaults to `flash_attention_2` and
 works on ROCm using the base image's `flash_attn` build.
 
-## Notes on the image
-
-A few choices in `Dockerfile.rocm` differ from
-[`docker/Dockerfile.cuda`](https://github.com/verl-project/verl-omni/blob/main/docker/Dockerfile.cuda)
-and are worth knowing before you modify it.
-
-**vLLM is compiled from source, before anything else is installed.** There are
-no ROCm wheels on PyPI, so `pip install vllm==0.28.0` cannot work. Building it
-first keeps the compile environment identical to the one the base image
-validated — notably, installing `kernels` without `kernels-data` registers a
-setuptools entry point that breaks every subsequent source build in the image.
-
-**The accelerator packages are constrained image-wide.** After vLLM is built,
-the installed versions of `torch`, `torchvision`, `torchaudio`, and `vllm` are
-frozen into `/opt/rocm-constraints.txt` and exported as `PIP_CONSTRAINT`. AMD's
-torch build is not on PyPI, so any resolver that decides to upgrade it would
-replace it with a CUDA wheel and silently break the image; the constraint turns
-that into a hard failure instead.
-
-**`vllm-omni` is installed with `--no-deps`**, because its `vllm==0.28.0`
-requirement would otherwise pull the CUDA wheel over the ROCm build. Its
-runtime imports are therefore installed explicitly. Three of its dependencies
-are deliberately omitted: `openai-whisper` and `cosmos-guardrail` serve audio
-and video-safety paths the diffusion recipes do not use, and `fa3-fwd` is
-CUDA-only FlashAttention 3.
-
-**Two dependency corrections are applied** that the ROCm base needs:
-`diffusers` is raised to 0.40.0 (0.33.1 references `FLAX_WEIGHTS_NAME`, removed
-in transformers v5), and `torchao` to >=0.16.0 (`peft` >=0.19 raises
-`ImportError` when an older torchao is present, even though these recipes never
-use torchao quantization).
-
-**`verl` is reinstalled at the repo pin.** The base image ships 0.9.0.dev0,
-whose agent loop reads a `data.continuous_token` key the diffusion trainer
-config does not define.
-
 ## Build Your Own Docker Image
 
 * AMD GPU (ROCm) Dockerfile: [`docker/Dockerfile.rocm`](https://github.com/verl-project/verl-omni/blob/main/docker/Dockerfile.rocm)
